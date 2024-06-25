@@ -1,0 +1,49 @@
+version: '3'
+services:
+  php:
+    build:
+      context: php
+      dockerfile: Dockerfile
+      args:
+        - VERSION_PHP=php:8.2-fpm
+    volumes:
+      - './backend:/var/www/html'
+      - './php/php.ini:/usr/local/etc/php/php.ini'
+      - './php/pcntl.ini:/usr/local/etc/php/conf.d/docker-php-ext-pcntl.ini'
+      - './php/xdebug.ini:/usr/local/etc/php/conf.d/docker-php-ext-xdebug.ini'
+    expose:
+      - 9000
+
+  nginx:
+    image: nginx:latest
+    volumes:
+      - './backend:/var/www/html'
+      - './nginx/default.conf:/etc/nginx/conf.d/default.conf'
+      - './nginx/nginx.conf:/etc/nginx/nginx.conf'
+    ports:
+      - 80:80
+      - 443:443
+
+  mysql:
+    image: mysql:5.7.37
+    restart: "no"
+    hostname: mysql
+    volumes:
+      - './mysql/mysqld.cnf:/etc/mysql/mysql.conf.d/mysqld.cnf'
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_ROOT_HOST="0.0.0.0"
+      - MYSQL_DATABASE=database
+      - MYSQL_USER=maksarovd
+      - MYSQL_PASSWORD=1
+
+  vue:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./frontend:/app
