@@ -1,22 +1,10 @@
-FROM node:lts-alpine
-
-# Устанавливаем рабочую директорию
+FROM php:8.2-fpm
+#NVM install Node
+RUN curl -o- 'https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh' | bash
+RUN cd ~/../root/.nvm/ && bash nvm.sh && bash -l -c "nvm install 20"
+#Node install Vue
+RUN bash -l -c "npm install -g npm@10.8.1" && bash -l -c "npm install -g @vue/cli"
+#Vue install
 WORKDIR /app
-
-# Копируем package.json и package-lock.json
-COPY package*.json ./
-
-# Устанавливаем зависимости
-RUN npm install
-
-# Копируем остальные файлы
-COPY . .
-
-# Сборка приложения
-RUN npm run build
-
-# Открываем порт 8080
-EXPOSE 8080
-
-# Запускаем сервер
-CMD ["npm", "run", "serve"]
+# vue create .  (first create)
+# npm run serve (link)[http://127.0.0.1:8080] 
