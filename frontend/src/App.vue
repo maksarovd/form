@@ -1,15 +1,19 @@
 <template>
   <img alt="Vue logo" src="./assets/logo.png">
-  <HelloWorld msg="Welcome to Your Vue.js App"/>
+
+  <FormItem msg="My Custom Component"/>
+  <InputItem />
 </template>
 
 <script>
-import HelloWorld from './components/HelloWorld.vue'
+import FormItem from './components/FormItem.vue'
+import InputItem from './components/InputItem.vue'
 
 export default {
   name: 'App',
   components: {
-    HelloWorld
+    FormItem,
+    InputItem
   }
 }
 </script>
