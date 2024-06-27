@@ -1,19 +1,14 @@
 <template>
-  <img alt="Vue logo" src="./assets/logo.png">
-
-  <FormItem msg="My Custom Component"/>
-  <InputItem />
+  <ExampleForm />
 </template>
 
 <script>
-import FormItem from './components/FormItem.vue'
-import InputItem from './components/InputItem.vue'
+import ExampleForm from './components/zoho/forms/integrations/ExampleForm.vue'
 
 export default {
   name: 'App',
   components: {
-    FormItem,
-    InputItem
+    ExampleForm
   }
 }
 </script>

@@ -2,110 +2,7 @@
 
 namespace App\Models\Api;
 
-use com\zoho\crm\api\Initializer;
-use com\zoho\crm\api\exception\SDKException;
-use com\zoho\crm\api\record\RecordsOperations;
-use com\zoho\crm\api\record\ParameterMap;
-use com\zoho\crm\api\record\GetRecordsParam;
-use com\zoho\crm\api\util\Choice;
-
-
-//Console      https://api-console.zoho.eu/
-//
-//Error Report https://www.zoho.com/crm/developer/docs/api/v2/access-refresh.html
-//
-//Docs  https://www.zoho.com/sites/zweb/images/crm/php-sdk-version-3.x.x.pdf
-//
-//Applications
-//
-//	Name            Laravelv11
-//	Client ID       1000.KFB8WKBB0E72X7CU5GAMAE33RLG7TG
-//	Client Secret   659ffac2581c9b1234c812cb12ae1c2c3a834942de
-//	Homepage URL    localhost
-//	Redirect URIs   http://127.0.0.1/
-//        Auth Code       1000.553e24b1b4dd425a81214598aa2a7106.c9cc7a43209904b5c1ecc48ccfc4789f&location
-//
-//	API Steps
-//
-//	1)  https://accounts.zoho.eu/oauth/v2/auth?response_type=code&client_id=<client_id>&scope=ZohoCRM.modules.ALL&redirect_uri=http://127.0.0.1/&access_type=offline&prompt=consent
-//
-//
-//
-//	2)  https://accounts.zoho.eu/oauth/v2/token?client_id=<client_id>&client_secret=<client_secret>&grant_type=authorization_code&code=<authorization_code>&redirect_uri=<redirect_uri>
-//
-//
-//	{
-//        "access_token": "1000.b306af187f077e0e9ec803ebdcee0c1a.27fdc42c1ab4d191e7de7ff8cfe89603",
-//	    "refresh_token": "1000.1ee10c14fbe506908c78c330513dd11d.0616217364d36d8f90dad8ff92f3c6d4",
-//	    "scope": "ZohoCRM.modules.ALL",
-//	    "api_domain": "https://www.zohoapis.eu",
-//	    "token_type": "Bearer",
-//	    "expires_in": 3600
-//	}
-//
-//
-//
-
-//Api Requests
-//
-//
-//
-//      Create Account [POST]
-//
-//      1) https://www.zohoapis.eu/crm/v2/Accounts
-//
-//      Authorization: Zoho-oauthtoken <ваш_токен_авторизации>
-//      Content-Type: application/json
-//
-//      {
-//          "data": [
-//	{
-//        "Account_Name": "Новая компания",
-//	    "Website": "https://newcompany.example.com",
-//	    "Phone": "1234567890",
-//	    "Billing_City": "Украина"
-//	}
-//	]
-//    }
-//
-//    Account List [GET]
-//
-//    Authorization: Zoho-oauthtoken <ваш_токен_авторизации>
-//    Content-Type: application/json
-//
-//    1) https://www.zohoapis.eu/crm/v2/Accounts
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//      Create Deal [POST]
-//
-//      1) https://www.zohoapis.eu/crm/v2/Deals
-//
-//      Authorization: Zoho-oauthtoken <ваш_токен_авторизации>
-//      Content-Type: application/json
-//
-//
-//      {
-//          "data": [
-//		{
-//            "Deal_Name": "Пример сделки",
-//		    "Stage": "Qualification",
-//		    "Amount": 10000,
-//		    "Closing_Date": "2024-07-01",
-//		    "Account_Name": {
-//            "name": "Имя компании",
-//		        "id": "725826000000430008"
-//		    }
-//		}
-//	    ]
-//    }
-//
+use Illuminate\Support\Facades\Redis;
 
 
 class Zoho extends ZohoAbstract
@@ -113,41 +10,202 @@ class Zoho extends ZohoAbstract
 
     public function getAccounts()
     {
-        try {
-            // Инициализация SDK
-            $this->initialize();
+        $accounts = [];
 
-            // Создание экземпляра RecordsOperations
-            $recordsOperations = new RecordsOperations();
-
-            // Создание параметров запроса
-            $paramInstance = new ParameterMap();
-            $paramInstance->add(GetRecordsParam::module(), new Choice("Accounts"));
-
-            // Получение записей
-            $response = $recordsOperations->getRecords($paramInstance);
-
-            if ($response != null) {
-                // Получение статуса ответа
-                echo("Status code: " . $response->getStatusCode() . "\n");
-
-                // Получение списка записей
-                $records = $response->getObject();
-
-                if ($records != null) {
-                    foreach ($records as $record) {
-                        // Получение значения полей записи
-                        foreach ($record->getKeyValues() as $key => $value) {
-                            echo($key . ": " . $value . "\n");
-                        }
-                    }
-                }
-            }
-        } catch (SDKException $e) {
-            echo("Exception: " . $e->getMessage());
+        if(!$this->checkToken()){
+            return $accounts;
         }
 
-        return $records;
+
+        $url = "https://www.zohoapis.eu/crm/v2/Accounts";
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "GET");
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Authorization: Zoho-oauthtoken ' . $this->getOrCreateToken()
+        ]);
+
+        $result = curl_exec($ch);
+
+        $data = json_decode($result, true);
+
+        if(curl_error($ch) || !empty($data['status']) &&  $data['status'] === 'error'){
+            return $accounts;
+        }
+
+        $accounts = $data['data'];
+
+        return $accounts;
+    }
+
+
+    public function getStages()
+    {
+
+        $deals = [
+            'Оценка пригодности',
+            'Требуется анализ',
+            'Ценностное предложение',
+            'Идентификация ответственных за принятие решений',
+            'Коммерческое предложение/Ценовое предложение',
+            'Переговоры /Оценка',
+            'Закрытые заключенные',
+            'Закрытые упущенные',
+            'Закрытые и выигранные конкурентами',
+            'Identify Decision Makers'
+        ];
+
+        return $deals;
+    }
+
+
+    public function storeAccount($request)
+    {
+        $params = [
+            'data' => [
+                [
+                    'Account_Name' => $request->get('Account_Name'),
+                    'Website' => $request->get('Website'),
+                    'Phone' => $request->get('Phone'),
+                    'Billing_City' => $request->get('Billing_City'),
+                ]
+            ]
+        ];
+
+
+        $url = "https://www.zohoapis.eu/crm/v2/Accounts";
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($params));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Authorization: Zoho-oauthtoken ' . $this->getOrCreateToken()
+        ]);
+
+        $result = curl_exec($ch);
+
+        $data = json_decode($result, true);
+
+        if(curl_error($ch) || !empty($data['status']) &&  $data['status'] === 'error'){
+            return false;
+        }
+
+        return true;
+    }
+
+
+    public function storeDeal($request)
+    {
+        $url = "https://www.zohoapis.eu/crm/v2/Deals";
+
+        $params = [
+            'data' => [
+                [
+                    'Deal_Name' => $request->get('Deal_Name'),
+                    'Stage' => $request->get('Stage'),
+                    'Amount' => $request->get('Amount'),
+                    'Closing_Date' => $request->get('Closing_Date'),
+                    'Account_Name' => $request->get('Account_Name')
+                ]
+            ]
+        ];
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($params));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Authorization: Zoho-oauthtoken ' . $this->getOrCreateToken()
+        ]);
+
+        $result = curl_exec($ch);
+
+        $data = json_decode($result, true);
+
+        if(curl_error($ch) || !empty($data['status']) &&  $data['status'] === 'error'){
+            return false;
+        }
+
+        return true;
+    }
+
+
+    public function storeToken($request)
+    {
+        $accessToken  = $request->get('access_token', false);
+        $refreshToken = $request->get('refresh_token', false);
+
+        if($accessToken && $refreshToken){
+            $redis = Redis::connection();
+            $redis->set('zoho_access_token', $request->get('access_token', false));
+            $redis->set('zoho_access_token_expire', date('Y-m-d h:i:s', strtotime("+50 minutes")) );
+            $redis->set('zoho_refresh_token', $request->get('refresh_token', false));
+            return true;
+        }
+        return false;
+    }
+
+
+    protected function refreshToken($redis)
+    {
+        $url  = "https://accounts.zoho.eu/oauth/v2/token";
+
+        $params = [
+            'refresh_token' => $redis->get('zoho_refresh_token'),
+            'client_id' => env('ZOHO_CLIENT_ID'),
+            'client_secret' => env('ZOHO_CLIENT_SECRET'),
+            'redirect_uri' => env('ZOHO_REDIRECT_URI'),
+            'grant_type' => 'refresh_token'
+        ];
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
+
+        $response = curl_exec($ch);
+
+        $data = json_decode($response, true);
+
+        if(curl_error($ch) || !empty($data['status']) &&  $data['status'] === 'error'){
+            throw new Exception('error when refresh zoho token');
+        }
+
+        $redis->set('zoho_access_token', $data['access_token']);
+        $redis->set('zoho_access_token_expire', date('Y-m-d h:i:s', strtotime("+50 minutes")) );
+
+        return $redis->get('zoho_access_token');
+    }
+
+
+    public function checkToken()
+    {
+        return (bool) Redis::connection()->get('zoho_access_token');
+    }
+
+
+    public function getOrCreateToken()
+    {
+        $redis   = (object) Redis::connection();
+        $token   = (string) $redis->get('zoho_access_token', false);
+
+        if(!$token){
+            throw new \Exception('zoho token not exist. Pleace add tokens via  http://127.0.0.1/api/v2/zoho/init_token');
+        }
+
+        $expired = (bool)   (date('Y-m-d h:i:s') > $redis->get('zoho_access_token_expire'));
+
+
+        if($expired){
+            $token = (string) $this->refreshToken($redis);
+        }
+
+        return $token;
     }
 
 }

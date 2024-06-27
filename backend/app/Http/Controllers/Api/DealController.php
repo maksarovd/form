@@ -4,22 +4,23 @@ namespace App\Http\Controllers\Api;
 
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use App\Http\Resources\Api\DealStageResource;
+use Illuminate\Support\Collection;
+use App\Models\Api\Zoho;
 
 
 class DealController extends Controller
 {
 
-    public function getDealStages()
+    #return new DealStageResource(collect($stages));
+    public function getStages(Zoho $zoho): Collection
     {
-        $stages= [];
-
-        return new DealStageResource(collect($stages));
+        return collect($zoho->getStages());
     }
 
-    public function storeDeal(Request $request)
+
+    public function storeDeal(Request $request, Zoho $zoho): bool
     {
-        //
+        return $zoho->storeDeal($request);
     }
 
 }
