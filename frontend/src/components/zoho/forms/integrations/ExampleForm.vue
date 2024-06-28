@@ -1,89 +1,87 @@
 <template>
-    <div class="alert alert-warning" role="alert" v-show="alertMissingToken">
-        Zoho Token is Missing. Please use <strong> <a href="http://127.0.0.1/storage/ApiDocumentation.md" target="_blank">visit a documentation</a></strong> endpoint to fix this.
-    </div>
+    <div class="alert alert-warning" role="alert" v-show="alertMissingToken" v-html="$t('missing_token')"></div>
 
     <div class="form-wrapper container" style="width: 30%">
 
         <div class="mb-3" v-show="showAccountSelect">
-            <label class="form-label"><strong>Stage 1. Select Account to make deal</strong></label>
+            <label class="form-label"><strong>{{ $t('stage_1') }}</strong></label>
             <select class="form-select form-select-sm mb-3" aria-label=".form-select-lg example" v-model="selected" @change="toggleDealForm">
                 <option v-for="account in accounts" :value="account" :key="account.id">{{ account.Account_Name }}</option>
             </select>
-            <div class="form-text">Select one of created zoho accounts</div>
+            <div class="form-text">{{ $t('stage_1_notice') }}</div>
         </div>
 
         <Form id="createNewAccount" v-show="showAccountForm" @submit="createAccount" style="border: 1px solid #ccc; padding: 20px;">
             <div class="mb-3">
-                <label class="form-label"><strong>Or Create new account</strong></label>
+                <label class="form-label"><strong>{{$t('stage_1_create_account')}}</strong></label>
             </div>
             <div class="row">
                 <div class="col-md-6">
-                    <label class="form-label">Name</label>
+                    <label class="form-label">{{$t('stage_1_name')}}</label>
                     <Field type="text" name="Account_Name" rules="required|name" class="form-control" placeholder="Account 2"/>
                     <ErrorMessage name="Account_Name" style="color: red"/>
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Website</label>
+                    <label class="form-label">{{$t('stage_1_website')}}</label>
                     <Field type="text" name="Website" rules="required|website" class="form-control" placeholder="https://company.com/" />
                     <ErrorMessage name="Website" style="color: red"/>
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Phone</label>
+                    <label class="form-label">{{$t('stage_1_phone')}}</label>
                     <Field type="text" name="Phone" rules="required" class="form-control" placeholder="+38 (___) ___-__-__" id="phone"/>
                     <ErrorMessage name="Phone" style="color: red"/>
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Billing City</label>
+                    <label class="form-label">{{$t('stage_1_city')}}</label>
                     <Field type="text" name="Billing_City" rules="required|city" class="form-control" placeholder="Ukraine"/>
                     <ErrorMessage name="Billing_City" style="color: red"/>
                 </div>
 
-                <div class="col-12 m-3">
-                    <button type="submit" class="btn btn-primary">Create new account</button>
+                <div class="col-12 mt-3">
+                    <button type="submit" class="btn btn-success">{{$t('form_submit')}}</button>
                 </div>
             </div>
         </Form>
 
         <Form id="createNewDeal" v-show="showDealForm" @submit="createDeal" style="border: 1px solid #ccc; padding: 20px;">
             <div class="mb-3">
-                <label class="form-label"><strong>Stage 2. Create new deal</strong></label>
+                <label class="form-label"><strong>{{$t('stage_2')}}</strong></label>
             </div>
             <div class="row">
                 <div class="col-md-6">
-                    <label class="form-label">Deal Name</label>
+                    <label class="form-label">{{$t('stage_2_name')}}</label>
                     <Field type="text" class="form-control" name="Deal_Name" rules="required|name" placeholder="My Deal"/>
                     <ErrorMessage name="Deal_Name" style="color: red"/>
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Amount</label>
+                    <label class="form-label">{{$t('stage_2_amount')}}</label>
                     <Field type="number" class="form-control" name="Amount" rules="amount" placeholder="1234,0000"/>
                     <ErrorMessage name="Amount" style="color: red"/>
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Stage</label>
+                    <label class="form-label">{{$t('stage_2_stage')}}</label>
                     <Field name="Stage">
                         <select v-model="selectedStage" class="form-select form-select-sm mb-3" aria-label=".form-select-lg example" name="Stage" id="Stage" >
                             <option v-for="stage in stages" :value="stage" :key="stage">{{ stage }}</option>
                         </select>
-                        <div class="form-text">Select one of deal stages</div>
+                        <div class="form-text">{{$t('stage_2_stage_notice')}}</div>
                         <ErrorMessage name="Stage" style="color: red"/>
                     </Field>
                 </div>
 
                 <div class="col-md-6">
-                    <label class="form-label">Closing Date</label>
+                    <label class="form-label">{{$t('stage_2_date')}}</label>
                     <Field type="date" class="form-control" name="Closing_Date" rules="required"/>
                     <ErrorMessage name="Closing_Date" style="color: red"/>
                 </div>
 
-                <div class="col-12 m-3">
-                    <button type="submit" class="btn btn-primary">Create new deal</button>
+                <div class="col-12 mt-3">
+                    <button type="submit" class="btn btn-success">{{$t('form_submit')}}</button>
                 </div>
             </div>
         </Form>
@@ -95,6 +93,7 @@
     import axios from 'axios';
     import { Form, Field, ErrorMessage, defineRule } from 'vee-validate';
     import IMask from 'imask';
+    import Swal from 'sweetalert2';
 
     defineRule('required', value => {
         if (!value || !value.length) {
@@ -177,21 +176,29 @@
                 var self = this;
                 try {
 
-                    await axios.get('http://127.0.0.1/api/v2/zoho/check_token').then(function(response){
+                    await axios.get('http://127.0.0.1/api/v2/zoho/check_token')
+                        .then((response) =>{
 
                         let tokenExist = new Boolean(response.data).valueOf();
 
                         self.alertMissingToken = !tokenExist;
-                        self.showAccountForm = tokenExist;
+                        self.showAccountForm   = tokenExist;
                         self.showAccountSelect = tokenExist;
+                    }).then(() => {
+                        self.getAccounts();
+                    }).then(() => {
+                        self.getStages();
                     });
 
 
-                    this.getAccounts();
-                    this.getStages();
                     this.mask = IMask(document.getElementById('phone'), {mask: '+{38} (000) 000-00-00'});
                 } catch (error) {
-                    console.error('Ошибка при загрузке данных:', error);
+                    Swal.fire({
+                        title: 'Ошибка при загрузке данных: /api/v2/zoho/check_token',
+                        text: error,
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
                 }
             },
 
@@ -200,7 +207,12 @@
                     const response = await axios.get('http://127.0.0.1/api/v2/zoho/get_accounts');
                     this.accounts = response.data;
                 } catch (error) {
-                    console.error('Ошибка при загрузке данных:', error);
+                    Swal.fire({
+                        title: 'Ошибка при загрузке данных: /api/v2/zoho/get_accounts',
+                        text: error,
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
                 }
             },
 
@@ -209,18 +221,35 @@
                     const response = await axios.get('http://127.0.0.1/api/v2/zoho/get_stages');
                     this.stages = response.data;
                 } catch (error) {
-                    console.error('Ошибка при загрузке данных:', error);
+                    Swal.fire({
+                        title: 'Ошибка при загрузке данных: /api/v2/zoho/get_stages',
+                        text: error,
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
                 }
             },
 
             async createAccount(formData){
                 try {
                     await axios.post('http://127.0.0.1/api/v2/zoho/store_account', formData)
+                        .then(() => {
+                            Swal.fire({
+                                title: 'account successfully created!',
+                                icon: 'success',
+                                confirmButtonText: 'OK'
+                            });
+                        })
                         .then(this.getAccounts());
 
-                    alert('account successfully created')
+
                 } catch (error) {
-                    console.error('Ошибка при загрузке данных:', error);
+                    Swal.fire({
+                        title: 'Ошибка при загрузке данных: /api/v2/zoho/store_account',
+                        text: error,
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
                 }
             },
 
@@ -231,11 +260,20 @@
                         name: this.selected.Account_Name,
                         id: this.selected.id
                     };
-                    const response = await axios.post('http://127.0.0.1/api/v2/zoho/store_deal', formData);
-
-                    alert(response.statusText);
+                    await axios.post('http://127.0.0.1/api/v2/zoho/store_deal', formData).then(() => {
+                        Swal.fire({
+                            title: 'deal successfully created!',
+                            icon: 'success',
+                            confirmButtonText: 'OK'
+                        });
+                    });
                 } catch (error) {
-                    console.error('Ошибка при загрузке данных:', error);
+                    Swal.fire({
+                        title: 'Ошибка при загрузке данных: /api/v2/zoho/store_deal',
+                        text: error,
+                        icon: 'error',
+                        confirmButtonText: 'OK'
+                    });
                 }
             },
 

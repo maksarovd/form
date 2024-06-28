@@ -2,25 +2,44 @@
 
 namespace App\Http\Controllers\Api;
 
-use Illuminate\Http\Request;
+use App\Http\Requests\Api\DealValidateRequest;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Collection;
-use App\Models\Api\Zoho;
+use App\Models\Api\ZohoApi;
 
 
 class DealController extends Controller
 {
 
-    #return new DealStageResource(collect($stages));
-    public function getStages(Zoho $zoho): Collection
+
+    /**
+     * Get Stages
+     *
+     *
+     * @access public
+     * @param ZohoApi $zohoApi
+     * @return Collection
+     */
+    public function getStages(ZohoApi $zohoApi): Collection
     {
-        return collect($zoho->getStages());
+        return collect($zohoApi->getStages());
     }
 
 
-    public function storeDeal(Request $request, Zoho $zoho): bool
+    /**
+     * Store Deal
+     *
+     *
+     * @access public
+     * @param DealValidateRequest $request
+     * @param ZohoApi $zohoApi
+     * @return bool
+     * @throws \Exception
+     */
+    public function storeDeal(DealValidateRequest $request, ZohoApi $zohoApi): bool
     {
-        return $zoho->storeDeal($request);
+        return $zohoApi->storeDeal($request);
     }
+
 
 }

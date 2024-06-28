@@ -3,13 +3,24 @@
 namespace App\Models\Api;
 
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Database\Eloquent\Model;
 
 
-class Zoho extends ZohoAbstract
+class ZohoApi extends Model implements ZohoApiConstraints
 {
 
+    /**
+     * Get Accounts
+     *
+     *
+     * @access public
+     * @return array
+     * @throws \Exception
+     */
     public function getAccounts()
     {
+        $url = ZohoApiConstraints::ZOHO_API_ENDPOINT_GET_ACCOUNTS;
+
         $accounts = [];
 
         if(!$this->checkToken()){
@@ -17,7 +28,6 @@ class Zoho extends ZohoAbstract
         }
 
 
-        $url = "https://www.zohoapis.eu/crm/v2/Accounts";
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "GET");
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -40,8 +50,16 @@ class Zoho extends ZohoAbstract
     }
 
 
+    /**
+     * Get Stages
+     *
+     *
+     * @access public
+     * @return array
+     */
     public function getStages()
     {
+        #p.s. not founded endpoint for stages..
 
         $deals = [
             'Оценка пригодности',
@@ -60,8 +78,19 @@ class Zoho extends ZohoAbstract
     }
 
 
+    /**
+     * Store Account
+     *
+     *
+     * @access public
+     * @param $request
+     * @return bool
+     * @throws \Exception
+     */
     public function storeAccount($request)
     {
+        $url = ZohoApiConstraints::ZOHO_API_ENDPOINT_STORE_ACCOUNT;
+
         $params = [
             'data' => [
                 [
@@ -74,7 +103,6 @@ class Zoho extends ZohoAbstract
         ];
 
 
-        $url = "https://www.zohoapis.eu/crm/v2/Accounts";
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -96,9 +124,18 @@ class Zoho extends ZohoAbstract
     }
 
 
+    /**
+     * Store Deal
+     *
+     *
+     * @access public
+     * @param $request
+     * @return bool
+     * @throws \Exception
+     */
     public function storeDeal($request)
     {
-        $url = "https://www.zohoapis.eu/crm/v2/Deals";
+        $url = ZohoApiConstraints::ZOHO_API_ENDPOINT_STORE_DEALS;
 
         $params = [
             'data' => [
@@ -133,6 +170,14 @@ class Zoho extends ZohoAbstract
     }
 
 
+    /**
+     * Store Token
+     *
+     *
+     * @access public
+     * @param $request
+     * @return bool
+     */
     public function storeToken($request)
     {
         $accessToken  = $request->get('access_token', false);
@@ -149,9 +194,18 @@ class Zoho extends ZohoAbstract
     }
 
 
+    /**
+     * Refresh Token
+     *
+     *
+     * @access protected
+     * @param $redis
+     * @return mixed
+     * @throws \Exception
+     */
     protected function refreshToken($redis)
     {
-        $url  = "https://accounts.zoho.eu/oauth/v2/token";
+        $url  = ZohoApiConstraints::ZOHO_API_ENDPOINT_REFRESH_TOKEN;
 
         $params = [
             'refresh_token' => $redis->get('zoho_refresh_token'),
@@ -173,7 +227,7 @@ class Zoho extends ZohoAbstract
         $data = json_decode($response, true);
 
         if(curl_error($ch) || !empty($data['status']) &&  $data['status'] === 'error'){
-            throw new Exception('error when refresh zoho token');
+            throw new \Exception('error when refresh zoho token');
         }
 
         $redis->set('zoho_access_token', $data['access_token']);
@@ -183,19 +237,47 @@ class Zoho extends ZohoAbstract
     }
 
 
+    /**
+     * Check Token
+     *
+     *
+     * @access public
+     * @return bool
+     */
     public function checkToken()
     {
         return (bool) Redis::connection()->get('zoho_access_token');
     }
 
 
+    /**
+     * Delete Token
+     *
+     *
+     * @access public
+     * @return bool
+     */
+    public function deleteToken()
+    {
+        return (bool) !Redis::connection()->set('zoho_access_token',false);
+    }
+
+
+    /**
+     * Get Or Create Token
+     *
+     *
+     * @access public
+     * @return string
+     * @throws \Exception
+     */
     public function getOrCreateToken()
     {
         $redis   = (object) Redis::connection();
         $token   = (string) $redis->get('zoho_access_token', false);
 
         if(!$token){
-            throw new \Exception('zoho token not exist. Pleace add tokens via  http://127.0.0.1/api/v2/zoho/init_token');
+            throw new \Exception('zoho token not exist. Pleace add tokens via ' . ZohoApiConstraints::ZOHO_API_ENDPOINT_INIT_TOKEN);
         }
 
         $expired = (bool)   (date('Y-m-d h:i:s') > $redis->get('zoho_access_token_expire'));
@@ -207,5 +289,6 @@ class Zoho extends ZohoAbstract
 
         return $token;
     }
+
 
 }
