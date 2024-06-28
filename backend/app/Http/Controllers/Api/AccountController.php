@@ -2,26 +2,44 @@
 
 namespace App\Http\Controllers\Api;
 
-use Illuminate\Http\Request;
+use App\Http\Requests\Api\AccountValidateRequest;
 use App\Http\Controllers\Controller;
-use App\Http\Resources\Api\AccountResource;
 use Illuminate\Support\Collection;
-use App\Models\Api\Zoho;
+use App\Models\Api\ZohoApi;
 
 
 class AccountController extends Controller
 {
 
-    # return AccountResource::collection(collect($accounts));
-    public function getAccounts(Zoho $zoho): Collection
+    /**
+     * Get Accounts
+     *
+     *
+     * @access public
+     * @param ZohoApi $zohoApi
+     * @return Collection
+     * @throws \Exception
+     */
+    public function getAccounts(ZohoApi $zohoApi): Collection
     {
-        return collect($zoho->getAccounts());
+        return collect($zohoApi->getAccounts());
     }
 
 
-    public function storeAccount(Request $request, Zoho $zoho): bool
+    /**
+     * Store Account
+     *
+     *
+     * @access public
+     * @param AccountValidateRequest $request
+     * @param ZohoApi $zohoApi
+     * @return bool
+     * @throws \Exception
+     */
+    public function storeAccount(AccountValidateRequest $request, ZohoApi $zohoApi): bool
     {
-        return $zoho->storeAccount($request);
+        return $zohoApi->storeAccount($request);
     }
+
 
 }

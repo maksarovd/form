@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\{AccountController, DealController, TokenController
  * @see http://127.0.0.1/api/v2/zoho/store_deal
  * @see http://127.0.0.1/api/v2/zoho/init_token
  * @see http://127.0.0.1/api/v2/zoho/check_token
+ * @see http://127.0.0.1/api/v2/zoho/delete_token
  */
 
 Route::prefix('/v2/zoho/')->group(function () {
@@ -22,4 +23,5 @@ Route::prefix('/v2/zoho/')->group(function () {
     Route::post('store_account', [AccountController::class, 'storeAccount']);
     Route::post('store_deal', [DealController::class, 'storeDeal']);
     Route::post('init_token', [TokenController::class, 'initializeToken']);
+    Route::post('delete_token', [TokenController::class, 'deleteToken']);
 });
