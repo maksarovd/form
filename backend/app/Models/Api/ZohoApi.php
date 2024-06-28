@@ -267,21 +267,15 @@ class ZohoApi extends Model implements ZohoApiConstraints
      * Get Or Create Token
      *
      *
-     * @access public
+     * @access protected
      * @return string
      * @throws \Exception
      */
-    public function getOrCreateToken()
+    protected function getOrCreateToken()
     {
         $redis   = (object) Redis::connection();
         $token   = (string) $redis->get('zoho_access_token', false);
-
-        if(!$token){
-            throw new \Exception('zoho token not exist. Pleace add tokens via ' . ZohoApiConstraints::ZOHO_API_ENDPOINT_INIT_TOKEN);
-        }
-
         $expired = (bool)   (date('Y-m-d h:i:s') > $redis->get('zoho_access_token_expire'));
-
 
         if($expired){
             $token = (string) $this->refreshToken($redis);
