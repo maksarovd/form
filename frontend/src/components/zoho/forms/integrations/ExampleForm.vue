@@ -1,17 +1,55 @@
 <template>
-    <div class="alert alert-warning" role="alert" v-show="alertMissingToken" v-html="$t('missing_token')"></div>
-
     <div class="form-wrapper container" style="width: 30%">
+      <Form v-show="!tokenExist" @submit="initializeToken" style="border: 1px solid #ccc; padding: 20px;">
+        <div class="mb-3">
+          <label class="form-label"><strong>{{$t('stage_0')}}</strong></label>
+        </div>
+        <div class="alert alert-warning" role="alert" v-html="$t('missing_token')"></div>
+        <div class="row">
+          <div class="col-md-12">
+            <label class="form-label">{{$t('stage_0_client_id')}}</label>
+            <Field type="text" name="client_id" rules="required"  v-model="clientId" class="form-control" :placeholder="$t('stage_0_client_id_placeholder')"/>
+            <ErrorMessage name="client_id" style="color: red"/>
+          </div>
 
-        <div class="mb-3" v-show="showAccountSelect">
+          <div class="col-md-12">
+            <label class="form-label">{{$t('stage_0_client_secret')}}</label>
+            <Field type="text" name="client_secret"  rules="required" class="form-control" :placeholder="$t('stage_0_client_secret_placeholder')"/>
+            <ErrorMessage name="client_secret" style="color: red"/>
+          </div>
+
+          <div class="col-md-12">
+            <label class="form-label">{{$t('stage_0_redirect_uri')}}</label>
+            <Field type="text" name="redirect_uri" v-model="redirectUri" rules="required" class="form-control" :placeholder="$t('stage_0_redirect_uri_placeholder')"/>
+            <ErrorMessage name="redirect_uri" style="color: red"/>
+          </div>
+
+          <div class="col-md-12">
+            <label class="form-label">
+              {{$t('stage_0_code')}}
+              <a v-show="codelink"  :href="apiGetCode" target="_blank">{{ $t('explain_token_code_getting') }}</a>
+            </label>
+            <Field type="text" name="code"  rules="required" class="form-control" @focus="codelink = true" :placeholder="$t('stage_0_code_placeholder')"/>
+            <ErrorMessage name="code" style="color: red"/>
+          </div>
+
+          <Field type="hidden" name="grant_type" value="authorization_code"/>
+
+          <div class="col-12 mt-3">
+            <button type="submit" class="btn btn-success">{{$t('form_add')}}</button>
+          </div>
+        </div>
+      </Form>
+
+      <div v-show="tokenExist" class="mb-3" >
             <label class="form-label"><strong>{{ $t('stage_1') }}</strong></label>
-            <select class="form-select form-select-sm mb-3" aria-label=".form-select-lg example" v-model="selected" @change="toggleDealForm">
+            <select class="form-select form-select-sm mb-3" aria-label=".form-select-lg example" v-model="selected" @change="accountExists = true">
                 <option v-for="account in accounts" :value="account" :key="account.id">{{ account.Account_Name }}</option>
             </select>
             <div class="form-text">{{ $t('stage_1_notice') }}</div>
         </div>
 
-        <Form id="createNewAccount" v-show="showAccountForm" @submit="createAccount" style="border: 1px solid #ccc; padding: 20px;">
+      <Form v-show="tokenExist && !accountExists" @submit="createAccount" style="border: 1px solid #ccc; padding: 20px;">
             <div class="mb-3">
                 <label class="form-label"><strong>{{$t('stage_1_create_account')}}</strong></label>
             </div>
@@ -46,7 +84,7 @@
             </div>
         </Form>
 
-        <Form id="createNewDeal" v-show="showDealForm" @submit="createDeal" style="border: 1px solid #ccc; padding: 20px;">
+      <Form v-show="tokenExist && accountExists" @submit="createDeal" style="border: 1px solid #ccc; padding: 20px;">
             <div class="mb-3">
                 <label class="form-label"><strong>{{$t('stage_2')}}</strong></label>
             </div>
@@ -96,10 +134,10 @@
     import Swal from 'sweetalert2';
 
     defineRule('required', value => {
-        if (!value || !value.length) {
-            return 'This field is required';
-        }
-        return true;
+      if (!value || !value.length) {
+        return 'validation.required';
+      }
+      return true;
     });
 
     defineRule('name', value => {
@@ -150,46 +188,56 @@
 
     export default {
         data() {
-            return {
-                selected: '',
-                selectedStage: '',
+          return {
+            selected: '',
+            selectedStage: '',
 
-                showDealForm: false,
-                showAccountForm: true,
-                showAccountSelect: true,
-                alertMissingToken: false,
+            clientId: '',
+            redirectUri: '',
 
-                accounts: [],
-                stages: []
-            }
+            codelink: false,
+            tokenExist: false,
+            accountExists: false,
+
+            accounts: [],
+            stages: []
+          }
         },
         mounted() {
-            this.initialize();
+          this.initialize()
+          //console.log(this)
+        },
+        unmounted() {
         },
         components: {
             Form,
             Field,
             ErrorMessage,
         },
+        computed: {
+          apiGetCode(){
+            return 'https://accounts.zoho.eu/oauth/v2/auth?' +
+                'client_id=' + this.clientId+
+                '&response_type=code'+
+                '&scope=ZohoCRM.modules.ALL&'+
+                '&redirect_uri='+ this.redirectUri+
+                '&access_type=offline'+
+                '&prompt=consent';
+          },
+        },
         methods: {
             async initialize(){
                 var self = this;
                 try {
-
                     await axios.get('http://127.0.0.1/api/v2/zoho/check_token')
-                        .then((response) =>{
+                    .then((response) => {
+                      self.tokenExist = new Boolean(response.data).valueOf();
 
-                        let tokenExist = new Boolean(response.data).valueOf();
-
-                        self.alertMissingToken = !tokenExist;
-                        self.showAccountForm   = tokenExist;
-                        self.showAccountSelect = tokenExist;
-                    }).then(() => {
+                      if(self.tokenExist){
                         self.getAccounts();
-                    }).then(() => {
                         self.getStages();
+                      }
                     });
-
 
                     this.mask = IMask(document.getElementById('phone'), {mask: '+{38} (000) 000-00-00'});
                 } catch (error) {
@@ -202,32 +250,26 @@
                 }
             },
 
-            async getAccounts(){
-                try {
-                    const response = await axios.get('http://127.0.0.1/api/v2/zoho/get_accounts');
-                    this.accounts = response.data;
-                } catch (error) {
-                    Swal.fire({
-                        title: 'Ошибка при загрузке данных: /api/v2/zoho/get_accounts',
-                        text: error,
-                        icon: 'error',
-                        confirmButtonText: 'OK'
-                    });
-                }
-            },
+            async initializeToken(formData){
+              var self = this;
+              try {
+                await axios.post('http://127.0.0.1/api/v2/zoho/create_token', formData)
+                .then((response) => {
+                  self.tokenExist = new Boolean(response.data).valueOf();
 
-            async getStages(){
-                try {
-                    const response = await axios.get('http://127.0.0.1/api/v2/zoho/get_stages');
-                    this.stages = response.data;
-                } catch (error) {
-                    Swal.fire({
-                        title: 'Ошибка при загрузке данных: /api/v2/zoho/get_stages',
-                        text: error,
-                        icon: 'error',
-                        confirmButtonText: 'OK'
-                    });
-                }
+                  if(self.tokenExist){
+                    self.getAccounts();
+                    self.getStages();
+                  }
+                });
+              } catch (error) {
+                Swal.fire({
+                  title: 'Ошибка при загрузке данных: /api/v2/zoho/init_token',
+                  text: error,
+                  icon: 'error',
+                  confirmButtonText: 'OK'
+                });
+              }
             },
 
             async createAccount(formData){
@@ -277,9 +319,32 @@
                 }
             },
 
-            toggleDealForm(){
-                this.showDealForm = true;
-                this.showAccountForm = false;
+            async getAccounts(){
+              try {
+                const response = await axios.get('http://127.0.0.1/api/v2/zoho/get_accounts');
+                this.accounts = response.data;
+              } catch (error) {
+                Swal.fire({
+                  title: 'Ошибка при загрузке данных: /api/v2/zoho/get_accounts',
+                  text: error,
+                  icon: 'error',
+                  confirmButtonText: 'OK'
+                });
+              }
+            },
+
+            async getStages(){
+              try {
+                const response = await axios.get('http://127.0.0.1/api/v2/zoho/get_stages');
+                this.stages = response.data;
+              } catch (error) {
+                Swal.fire({
+                  title: 'Ошибка при загрузке данных: /api/v2/zoho/get_stages',
+                  text: error,
+                  icon: 'error',
+                  confirmButtonText: 'OK'
+                });
+              }
             },
         },
     }

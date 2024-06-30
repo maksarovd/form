@@ -3,10 +3,8 @@
 namespace App\Models\Api;
 
 use Illuminate\Support\Facades\Redis;
-use Illuminate\Database\Eloquent\Model;
 
-
-class ZohoApi extends Model implements ZohoApiConstraints
+class ZohoApi extends ZohoApiAbstract implements ZohoApiConstraints
 {
 
     /**
@@ -17,36 +15,18 @@ class ZohoApi extends Model implements ZohoApiConstraints
      * @return array
      * @throws \Exception
      */
-    public function getAccounts()
+    public function getAccounts(): array
     {
-        $url = ZohoApiConstraints::ZOHO_API_ENDPOINT_GET_ACCOUNTS;
+        $url = (string) ZohoApiConstraints::ZOHO_API_ENDPOINT_GET_ACCOUNTS;
 
-        $accounts = [];
-
-        if(!$this->checkToken()){
-            return $accounts;
-        }
-
-
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "GET");
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        $headers = [
             'Content-Type: application/json',
-            'Authorization: Zoho-oauthtoken ' . $this->getOrCreateToken()
-        ]);
+            'Authorization: Zoho-oauthtoken ' . $this->getOrRefreshToken()
+        ];
 
-        $result = curl_exec($ch);
+        $response = $this->get($url, $headers, null);
 
-        $data = json_decode($result, true);
-
-        if(curl_error($ch) || !empty($data['status']) &&  $data['status'] === 'error'){
-            return $accounts;
-        }
-
-        $accounts = $data['data'];
-
-        return $accounts;
+        return (array) $response['data'];
     }
 
 
@@ -57,11 +37,11 @@ class ZohoApi extends Model implements ZohoApiConstraints
      * @access public
      * @return array
      */
-    public function getStages()
+    public function getStages(): array
     {
         #p.s. not founded endpoint for stages..
 
-        $deals = [
+        return (array) [
             'Оценка пригодности',
             'Требуется анализ',
             'Ценностное предложение',
@@ -73,8 +53,6 @@ class ZohoApi extends Model implements ZohoApiConstraints
             'Закрытые и выигранные конкурентами',
             'Identify Decision Makers'
         ];
-
-        return $deals;
     }
 
 
@@ -87,38 +65,27 @@ class ZohoApi extends Model implements ZohoApiConstraints
      * @return bool
      * @throws \Exception
      */
-    public function storeAccount($request)
+    public function storeAccount($request): bool
     {
-        $url = ZohoApiConstraints::ZOHO_API_ENDPOINT_STORE_ACCOUNT;
+        $url = (string) ZohoApiConstraints::ZOHO_API_ENDPOINT_STORE_ACCOUNT;
 
-        $params = [
-            'data' => [
-                [
-                    'Account_Name' => $request->get('Account_Name'),
-                    'Website' => $request->get('Website'),
-                    'Phone' => $request->get('Phone'),
-                    'Billing_City' => $request->get('Billing_City'),
-                ]
-            ]
+        $headers = (array) [
+            'Content-Type: application/json',
+            'Authorization: Zoho-oauthtoken ' . $this->getOrRefreshToken()
         ];
 
-
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($params));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'Authorization: Zoho-oauthtoken ' . $this->getOrCreateToken()
+        $params = (string) json_encode([
+            'data' => [
+                [
+                    'Account_Name' => (string) $request->get('Account_Name'),
+                    'Website'      => (string) $request->get('Website'),
+                    'Phone'        => (string) $request->get('Phone'),
+                    'Billing_City' => (string) $request->get('Billing_City'),
+                ]
+            ]
         ]);
 
-        $result = curl_exec($ch);
-
-        $data = json_decode($result, true);
-
-        if(curl_error($ch) || !empty($data['status']) &&  $data['status'] === 'error'){
-            return false;
-        }
+        $response = $this->post($url, $headers, $params);
 
         return true;
     }
@@ -133,38 +100,28 @@ class ZohoApi extends Model implements ZohoApiConstraints
      * @return bool
      * @throws \Exception
      */
-    public function storeDeal($request)
+    public function storeDeal($request): bool
     {
-        $url = ZohoApiConstraints::ZOHO_API_ENDPOINT_STORE_DEALS;
+        $url = (string) ZohoApiConstraints::ZOHO_API_ENDPOINT_STORE_DEALS;
 
-        $params = [
-            'data' => [
-                [
-                    'Deal_Name' => $request->get('Deal_Name'),
-                    'Stage' => $request->get('Stage'),
-                    'Amount' => $request->get('Amount'),
-                    'Closing_Date' => $request->get('Closing_Date'),
-                    'Account_Name' => $request->get('Account_Name')
-                ]
-            ]
+        $headers = (array) [
+            'Content-Type: application/json',
+            'Authorization: Zoho-oauthtoken ' . $this->getOrRefreshToken()
         ];
 
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "POST");
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($params));
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'Authorization: Zoho-oauthtoken ' . $this->getOrCreateToken()
+        $params = (string) json_encode([
+            'data' => [
+                [
+                    'Deal_Name'    => (string) $request->get('Deal_Name'),
+                    'Stage'        => (string) $request->get('Stage'),
+                    'Amount'       => (string) $request->get('Amount'),
+                    'Closing_Date' => (string) $request->get('Closing_Date'),
+                    'Account_Name' => (array)  $request->get('Account_Name')
+                ]
+            ]
         ]);
 
-        $result = curl_exec($ch);
-
-        $data = json_decode($result, true);
-
-        if(curl_error($ch) || !empty($data['status']) &&  $data['status'] === 'error'){
-            return false;
-        }
+        $response = $this->post($url, $headers, $params);
 
         return true;
     }
@@ -178,19 +135,31 @@ class ZohoApi extends Model implements ZohoApiConstraints
      * @param $request
      * @return bool
      */
-    public function storeToken($request)
+    public function storeToken($request): bool
     {
-        $accessToken  = $request->get('access_token', false);
-        $refreshToken = $request->get('refresh_token', false);
+        $url = (string) ZohoApiConstraints::ZOHO_API_ENDPOINT_CREATE_TOKEN;
 
-        if($accessToken && $refreshToken){
-            $redis = Redis::connection();
-            $redis->set('zoho_access_token', $request->get('access_token', false));
-            $redis->set('zoho_access_token_expire', date('Y-m-d h:i:s', strtotime("+50 minutes")) );
-            $redis->set('zoho_refresh_token', $request->get('refresh_token', false));
-            return true;
-        }
-        return false;
+        $headers = (array) ['Content-Type: application/x-www-form-urlencoded'];
+
+        $params = (array) [
+            'client_id'     => (string) $request->get('client_id'),
+            'client_secret' => (string) $request->get('client_secret'),
+            'code'          => (string) $request->get('code'),
+            'redirect_uri'  => (string) $request->get('redirect_uri'),
+            'grant_type'    => (string) $request->get('grant_type'),
+        ];
+
+        $response = $this->post($url, $headers, $params);
+
+        $redis = (object) Redis::connection();
+        $redis->set('zoho_access_token', $response['access_token']);
+        $redis->set('zoho_refresh_token', $response['refresh_token']);
+        $redis->set('zoho_client_id', $request->get('client_id'));
+        $redis->set('zoho_client_secret', $request->get('client_secret'));
+        $redis->set('zoho_redirect_uri', $request->get('redirect_uri'));
+        $redis->set('zoho_access_token_expire', date('Y-m-d h:i:s', strtotime("+50 minutes")) );
+
+        return true;
     }
 
 
@@ -203,37 +172,26 @@ class ZohoApi extends Model implements ZohoApiConstraints
      * @return mixed
      * @throws \Exception
      */
-    protected function refreshToken($redis)
+    protected function refreshToken($redis): mixed
     {
-        $url  = ZohoApiConstraints::ZOHO_API_ENDPOINT_REFRESH_TOKEN;
+        $url = (string) ZohoApiConstraints::ZOHO_API_ENDPOINT_REFRESH_TOKEN;
 
-        $params = [
-            'refresh_token' => $redis->get('zoho_refresh_token'),
-            'client_id' => env('ZOHO_CLIENT_ID'),
-            'client_secret' => env('ZOHO_CLIENT_SECRET'),
-            'redirect_uri' => env('ZOHO_REDIRECT_URI'),
-            'grant_type' => 'refresh_token'
+        $headers = (array) ['Content-Type: application/x-www-form-urlencoded'];
+
+        $params = (array) [
+            'refresh_token' => (string) $redis->get('zoho_refresh_token'),
+            'client_id'     => (string) $redis->get('zoho_client_id'),
+            'client_secret' => (string) $redis->get('zoho_client_secret'),
+            'redirect_uri'  => (string) $redis->get('zoho_redirect_uri'),
+            'grant_type'    => (string) 'refresh_token'
         ];
 
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($params));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/x-www-form-urlencoded']);
+        $response = $this->post($url, $headers, $params);
 
-        $response = curl_exec($ch);
-
-        $data = json_decode($response, true);
-
-        if(curl_error($ch) || !empty($data['status']) &&  $data['status'] === 'error'){
-            throw new \Exception('error when refresh zoho token');
-        }
-
-        $redis->set('zoho_access_token', $data['access_token']);
+        $redis->set('zoho_access_token', $response['access_token']);
         $redis->set('zoho_access_token_expire', date('Y-m-d h:i:s', strtotime("+50 minutes")) );
 
-        return $redis->get('zoho_access_token');
+        return (string) $redis->get('zoho_access_token');
     }
 
 
@@ -257,21 +215,21 @@ class ZohoApi extends Model implements ZohoApiConstraints
      * @access public
      * @return bool
      */
-    public function deleteToken()
+    public function deleteToken(): bool
     {
         return (bool) !Redis::connection()->set('zoho_access_token',false);
     }
 
 
     /**
-     * Get Or Create Token
+     * Get Or Refresh Token
      *
      *
      * @access protected
      * @return string
      * @throws \Exception
      */
-    protected function getOrCreateToken()
+    protected function getOrRefreshToken(): string
     {
         $redis   = (object) Redis::connection();
         $token   = (string) $redis->get('zoho_access_token', false);
@@ -281,7 +239,7 @@ class ZohoApi extends Model implements ZohoApiConstraints
             $token = (string) $this->refreshToken($redis);
         }
 
-        return $token;
+        return (string) $token;
     }
 
 
